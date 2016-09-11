@@ -8,6 +8,37 @@ import (
 	"github.com/pkg/errors"
 )
 
+// AccessToken represents store_api.access_token
+type AccessToken struct {
+	AccountID   int64     // account_id
+	Token       string    // token
+	IsValid     bool      // is_valid
+	GeneratedAt time.Time // generated_at
+}
+
+// Create inserts the AccessToken to the database.
+func (r *AccessToken) Create(db Queryer) error {
+	_, err := db.Exec(
+		`INSERT INTO access_token (account_id, token, is_valid, generated_at) VALUES ($1, $2, $3, $4)`,
+		&r.AccountID, &r.Token, &r.IsValid, &r.GeneratedAt)
+	if err != nil {
+		return errors.Wrap(err, "failed to insert access_token")
+	}
+	return nil
+}
+
+// GetAccessTokenByPk select the AccessToken from the database.
+func GetAccessTokenByPk(db Queryer, pk0 int64) (*AccessToken, error) {
+	var r AccessToken
+	err := db.QueryRow(
+		`SELECT account_id, token, is_valid, generated_at FROM access_token WHERE account_id = $1`,
+		pk0).Scan(&r.AccountID, &r.Token, &r.IsValid, &r.GeneratedAt)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to select access_token")
+	}
+	return &r, nil
+}
+
 // Item represents store_api.item
 type Item struct {
 	ID          int64           // id

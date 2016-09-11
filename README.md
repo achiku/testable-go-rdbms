@@ -20,7 +20,7 @@
 - 'tests are necessary/unnecessary' kind of rant
 
 
-### Problem
+### Problems
 
 - 1. No standard way to setup/teardown database and transaction in Go test
     * Unlike other languages with WAF, it is rather unclear.
@@ -30,7 +30,7 @@
     * Python has factory-boy, Ruby has factory-girl, but...
 
 
-### Solution
+### Solutions
 
 The following is just one way to tackle the problems previously stated. I really, really want to hear how other Gophers are doing.
 

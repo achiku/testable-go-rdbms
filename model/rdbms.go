@@ -21,5 +21,7 @@ type Txer interface {
 // DBer database/sql
 type DBer interface {
 	Queryer
-	driver.Conn
+	Begin() (*sql.Tx, error)
+	Close() error
+	Ping() error
 }

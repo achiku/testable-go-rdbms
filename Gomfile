@@ -1,6 +1,7 @@
 gom 'github.com/lib/pq'
 gom 'github.com/pkg/errors'
 gom 'github.com/AdrianLungu/decimal'
+gom 'github.com/rs/xlog'
 
 group :development do
     gom 'github.com/achiku/pgtxdb'
