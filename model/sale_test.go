@@ -17,17 +17,17 @@ func TestSale_GetDailySummary(t *testing.T) {
 		Name:  "beer",
 		Price: decimal.NewFromFloat(500),
 	})
-	s1 := TestCreateSaleData(t, tx, i1, u, &Sale{
+	TestCreateSaleData(t, tx, i1, u, &Sale{
 		SoldAt: dt,
 	})
 	i2 := TestCreateItemData(t, tx, &Item{
 		Name:  "pizza",
 		Price: decimal.NewFromFloat(1200),
 	})
-	s2 := TestCreateSaleData(t, tx, i2, u, &Sale{
+	TestCreateSaleData(t, tx, i2, u, &Sale{
 		SoldAt: dt,
 	})
-	s3 := TestCreateSaleData(t, tx, i2, u, &Sale{
+	TestCreateSaleData(t, tx, i2, u, &Sale{
 		SoldAt: dt.AddDate(0, 0, -2),
 	})
 

@@ -17,6 +17,7 @@ type DailySummaryStats struct {
 // GetDailySummary get daily summary
 func GetDailySummary(tx Query, d time.Time) ([]DailySummaryStats, error) {
 	from := time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.Local)
+	to := from.AddDate(0, 0, 1)
 	rows, err := tx.Query(`
 	SELECT
 		date_trunc('day', s.sold_at)

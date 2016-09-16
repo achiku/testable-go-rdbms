@@ -330,6 +330,112 @@ func TestItem_ItemCreate(t *testing.T) {
 
 ### 2-1. Patched version of `mergo` to create data
 
+
 ```go
-code...
+// GetDailySummary get daily summary
+func GetDailySummary(tx Query, d time.Time) ([]DailySummaryStats, error) {
+	from := time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.Local)
+	rows, err := tx.Query(`
+	SELECT
+		date_trunc('day', s.sold_at)
+		, i.id
+		, i.name
+		, sum(s.paid_amount)
+	FROM sale s
+	JOIN item i
+	ON s.item_id = i.id
+	WHERE s.sold_at >= $1
+	AND s.sold_at < $2
+	GROUP BY
+		date_trunc('day', s.sold_at)
+		, i.id
+		, i.name
+	`, from, to)
+	if err != nil {
+		return nil, err
+	}
+	var sts []DailySummaryStats
+	for rows.Next() {
+		var st DailySummaryStats
+		rows.Scan(
+			&st.Date,
+			&st.ItemID,
+			&st.ItemName,
+			&st.SaleAmount,
+		)
+		sts = append(sts, st)
+	}
+	return sts, nil
+}
+```
+
+```go
+package model
+
+import (
+	"testing"
+	"time"
+
+	"github.com/AdrianLungu/decimal"
+)
+
+func TestSale_GetDailySummary(t *testing.T) {
+	tx, cleanup := TestSetupTx(t)
+	defer cleanup()
+
+	dt := time.Now()
+	u := TestCreateUserAccountData(t, tx, &UserAccount{})
+	i1 := TestCreateItemData(t, tx, &Item{
+		Name:  "beer",
+		Price: decimal.NewFromFloat(500),
+	})
+	TestCreateSaleData(t, tx, i1, u, &Sale{
+		SoldAt: dt,
+	})
+	i2 := TestCreateItemData(t, tx, &Item{
+		Name:  "pizza",
+		Price: decimal.NewFromFloat(1200),
+	})
+	TestCreateSaleData(t, tx, i2, u, &Sale{
+		SoldAt: dt,
+	})
+	TestCreateSaleData(t, tx, i2, u, &Sale{
+		SoldAt: dt.AddDate(0, 0, -2),
+	})
+
+	sts, err := GetDailySummary(tx, dt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%+v", sts)
+}
+```
+
+```go
+package model
+
+import (
+	"database/sql"
+	"log"
+	"testing"
+
+	"github.com/AdrianLungu/decimal"
+	"github.com/achiku/mergo"
+)
+
+// TestCreateItemData create sale test data
+func TestCreateItemData(t *testing.T, tx Query, item *Item) *Item {
+	itemDefault := &Item{
+		Price:       decimal.NewFromFloat(1000),
+		Name:        "item1",
+		Description: sql.NullString{String: "test desc"},
+	}
+	if err := mergo.MergeWithOverwrite(itemDefault, item, TestStructMergeFunc); err != nil {
+		log.Fatal(err)
+	}
+	if err := itemDefault.Create(tx); err != nil {
+		t.Fatal(err)
+	}
+	return itemDefault
+}
 ```
