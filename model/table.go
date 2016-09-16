@@ -17,7 +17,7 @@ type AccessToken struct {
 }
 
 // Create inserts the AccessToken to the database.
-func (r *AccessToken) Create(db Queryer) error {
+func (r *AccessToken) Create(db Query) error {
 	_, err := db.Exec(
 		`INSERT INTO access_token (account_id, token, is_valid, generated_at) VALUES ($1, $2, $3, $4)`,
 		&r.AccountID, &r.Token, &r.IsValid, &r.GeneratedAt)
@@ -28,7 +28,7 @@ func (r *AccessToken) Create(db Queryer) error {
 }
 
 // GetAccessTokenByPk select the AccessToken from the database.
-func GetAccessTokenByPk(db Queryer, pk0 int64) (*AccessToken, error) {
+func GetAccessTokenByPk(db Query, pk0 int64) (*AccessToken, error) {
 	var r AccessToken
 	err := db.QueryRow(
 		`SELECT account_id, token, is_valid, generated_at FROM access_token WHERE account_id = $1`,
@@ -48,7 +48,7 @@ type Item struct {
 }
 
 // Create inserts the Item to the database.
-func (r *Item) Create(db Queryer) error {
+func (r *Item) Create(db Query) error {
 	err := db.QueryRow(
 		`INSERT INTO item (name, price, description) VALUES ($1, $2, $3) RETURNING id`,
 		&r.Name, &r.Price, &r.Description).Scan(&r.ID)
@@ -59,7 +59,7 @@ func (r *Item) Create(db Queryer) error {
 }
 
 // GetItemByPk select the Item from the database.
-func GetItemByPk(db Queryer, pk0 int64) (*Item, error) {
+func GetItemByPk(db Query, pk0 int64) (*Item, error) {
 	var r Item
 	err := db.QueryRow(
 		`SELECT id, name, price, description FROM item WHERE id = $1`,
@@ -80,7 +80,7 @@ type Sale struct {
 }
 
 // Create inserts the Sale to the database.
-func (r *Sale) Create(db Queryer) error {
+func (r *Sale) Create(db Query) error {
 	err := db.QueryRow(
 		`INSERT INTO sale (account_id, item_id, paid_amount, sold_at) VALUES ($1, $2, $3, $4) RETURNING id`,
 		&r.AccountID, &r.ItemID, &r.PaidAmount, &r.SoldAt).Scan(&r.ID)
@@ -91,7 +91,7 @@ func (r *Sale) Create(db Queryer) error {
 }
 
 // GetSaleByPk select the Sale from the database.
-func GetSaleByPk(db Queryer, pk0 int64) (*Sale, error) {
+func GetSaleByPk(db Query, pk0 int64) (*Sale, error) {
 	var r Sale
 	err := db.QueryRow(
 		`SELECT id, account_id, item_id, paid_amount, sold_at FROM sale WHERE id = $1`,
@@ -113,7 +113,7 @@ type UserAccount struct {
 }
 
 // Create inserts the UserAccount to the database.
-func (r *UserAccount) Create(db Queryer) error {
+func (r *UserAccount) Create(db Query) error {
 	err := db.QueryRow(
 		`INSERT INTO user_account (email, gender, birthday, password, registered_at) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
 		&r.Email, &r.Gender, &r.Birthday, &r.Password, &r.RegisteredAt).Scan(&r.ID)
@@ -124,7 +124,7 @@ func (r *UserAccount) Create(db Queryer) error {
 }
 
 // GetUserAccountByPk select the UserAccount from the database.
-func GetUserAccountByPk(db Queryer, pk0 int64) (*UserAccount, error) {
+func GetUserAccountByPk(db Query, pk0 int64) (*UserAccount, error) {
 	var r UserAccount
 	err := db.QueryRow(
 		`SELECT id, email, gender, birthday, password, registered_at FROM user_account WHERE id = $1`,
@@ -143,7 +143,7 @@ type Username struct {
 }
 
 // Create inserts the Username to the database.
-func (r *Username) Create(db Queryer) error {
+func (r *Username) Create(db Query) error {
 	_, err := db.Exec(
 		`INSERT INTO username (account_id, lower_name, display_name) VALUES ($1, $2, $3)`,
 		&r.AccountID, &r.LowerName, &r.DisplayName)
@@ -154,7 +154,7 @@ func (r *Username) Create(db Queryer) error {
 }
 
 // GetUsernameByPk select the Username from the database.
-func GetUsernameByPk(db Queryer, pk0 int64) (*Username, error) {
+func GetUsernameByPk(db Query, pk0 int64) (*Username, error) {
 	var r Username
 	err := db.QueryRow(
 		`SELECT account_id, lower_name, display_name FROM username WHERE account_id = $1`,

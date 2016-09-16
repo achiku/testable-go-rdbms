@@ -1,34 +1,31 @@
 ## Testable RDBMS backed Go application
 
-### Good Tests?
 
-- Good tests are
-    * right
-    * independent from eash other
-    * fast to complete
-    * easy to write
-
-##### Things I talk in 10 min
+### Things I talk in 10 min
 
 - independent/repeatable tests for RDBMS backed Go app
 - fast tests for RDBMS backed Go app
 - easy to write tests for RDBMS backed Go app
 
-##### Things I don't talk
+---
+
+### Things I don't talk
 
 - how to write 'right' tests
 - 'tests are necessary/unnecessary' kind of rant
 
+---
 
 ### Problems
 
 - 1. No standard way to setup/teardown database and transaction in Go test
     * Unlike other languages with WAF, it is rather unclear.
-    * Django ORM/SQLAlchemy/ActiveRecord have standard way to do this.
+    * Django ORM/SQLAlchemy/ActiveRecord have standard, or at least well known way to do this.
     * How to handle transaction in tests is also unclear.
 - 2. No standard way to easily create test data
-    * Python has factory-boy, Ruby has factory-girl, but...
+    * Python has factory-boy, Ruby has factory-girl, but Go...
 
+---
 
 ### Solutions
 
@@ -37,11 +34,10 @@ The following is just one way to tackle the problems previously stated. I really
 - 1. No standard way to setup/teardown database and transaction in Go test
     - 1-1. Use `TestMain` to setup/teardown database(or schema)
     - 1-2. Use single transaction database driver to make test independent and repeatable
-    - 1-3. Or mock database access?
 - 2. No standard way to easily create test data
     - 2-1. Use patched version of `mergo` to create data
-    - 2-2. Or something else?
 
+---
 
 ### 1-1. TestMain to setup/teardown database(or schema)
 
@@ -51,6 +47,7 @@ The following is just one way to tackle the problems previously stated. I really
     - Run tests
     - Drop cascade test schema
 
+---
 
 ### 1-1. TestMain to setup/teardown database(or schema)
 
@@ -61,6 +58,8 @@ The following is just one way to tackle the problems previously stated. I really
 - TestingDBTeardown
     * drop cascade `store_api_schema`
 - https://github.com/achiku/testable-go-rdbms/blob/master/model/main_test.go
+
+---
 
 ```go
 package model
@@ -96,6 +95,8 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 ```
+
+---
 
 - https://github.com/achiku/testable-go-rdbms/blob/master/model/testing.go
 
@@ -167,15 +168,19 @@ func TestingDBTeardown(conStr string) error {
 }
 ```
 
+---
+
+
 ### 1-1. TestMain to setup/teardown database(or schema)
 
 - We are using SQLAlchemy + alembic to create database objects like tables, index, and constraints
     * As you can see above example, it gets more and more difficult to manage plane SQL to manage database objects
 - This combination (SQLAlchemy + alembic) can be also used for table migration management in production
-- Plus, we are making these functions public so that other packages depend on `model` package also can setup/teardown the database
+- Furthermore, we are making these functions public so that other packages depend on `model` package can also setup/teardown the test schema
     * https://speakerdeck.com/mitchellh/advanced-testing-with-go
     * p52: Testing as a Public API
 
+---
 
 ### 1-2. Single transaction database driver to make test independent and repeatable
 
@@ -186,6 +191,7 @@ func TestingDBTeardown(conStr string) error {
 
 > Package txdb is a single transaction based database sql driver. When the connection is opened, it starts a transaction and all operations performed on this sql.DB will be within that transaction. If concurrent actions are performed, the lock is acquired and connection is always released the statements and rows are not holding the connection.
 
+---
 
 ### 1-2. Single transaction database driver to make test independent and repeatable
 
@@ -228,17 +234,92 @@ func TestSetupDB(t *testing.T) (DBer, func()) {
 }
 ```
 
+---
+
 
 ### 1-2. Single transaction database driver to make test independent and repeatable
 
 - We are extensibly using PostgreSQL
-    * I forked `go-txdb` and add some functionalities https://github.com/achiku/pgtxdb
+    * I forked great work of datadog, `go-txdb` and add some functionalities for PostgreSQL https://github.com/achiku/pgtxdb
     * PostgreSQL can execute `savepoint`
     * Using `pgtxdb`, developers can test target code with multiple transactions including rollback
 - When `conn.Bigin()` is called, this library executes `SAVEPOINT pgtxdb_xxx;` instead of actually begins transaction.
 - tx.Commit() does nothing.
 - `ROLLBACK TO SAVEPOINT pgtxdb_xxx;` will be executed upon `tx.Rollback()` call so that it can emulate transaction rollback.
 - Above features enable us to emulate multiple transactions in one test case.
+
+
+---
+
+### 1-2. Single transaction database driver to make test independent and repeatable
+
+- Tips 1: pass `*testing.T` for all the helper functions, and `t.Fatal(err)` if error occur
+    * https://speakerdeck.com/mitchellh/advanced-testing-with-go?slide=28
+    * this reduce error handling boilerplate, and makes test code cleaner
+- Tips 2: use `cleanup` function which does all the cleanup-after-test kind of tasks
+    * https://speakerdeck.com/mitchellh/advanced-testing-with-go?slide=29
+    * using this func, you don't have to have multiple `defer` in the test
+- Tips 3: define interface for database so that you can switch implementation for the test
+
+
+```go
+package model
+
+import "database/sql"
+
+// Query database/sql compatible query interface
+type Query interface {
+	Exec(string, ...interface{}) (sql.Result, error)
+	Query(string, ...interface{}) (*sql.Rows, error)
+	QueryRow(string, ...interface{}) *sql.Row
+}
+
+// Tx represents database transaction interface
+type Tx interface {
+	Query
+	Commit() error
+	Rollback() error
+}
+
+// DB database/sql interface
+type DB interface {
+	Query
+	Begin() (*sql.Tx, error)
+	Close() error
+	Ping() error
+}
+```
+
+---
+
+### 1-2. Single transaction database driver to make test independent and repeatable
+
+```go
+func TestItem_ItemCreate(t *testing.T) {
+	tx, cleanup := TestSetupTx(t)
+	defer cleanup()
+
+	item := Item{
+		Name:        "test item1",
+		Price:       decimal.NewFromFloat(1000),
+		Description: sql.NullString{String: "this is test"},
+	}
+	if err := item.Create(tx); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%+v", item)
+
+	targetItem, err := GetItemByPk(tx, item.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if targetItem.Name != item.Name {
+		t.Errorf("want %s got %s", item.Name, targetItem.Name)
+	}
+}
+```
+
+---
 
 
 ### 2-1. Patched version of `mergo` to create data
@@ -249,6 +330,6 @@ func TestSetupDB(t *testing.T) (DBer, func()) {
 
 ### 2-1. Patched version of `mergo` to create data
 
-```
+```go
 code...
 ```

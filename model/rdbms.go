@@ -1,26 +1,24 @@
 package model
 
-import (
-	"database/sql"
-	"database/sql/driver"
-)
+import "database/sql"
 
-// Queryer database/sql compatible query interface
-type Queryer interface {
+// Query database/sql compatible query interface
+type Query interface {
 	Exec(string, ...interface{}) (sql.Result, error)
 	Query(string, ...interface{}) (*sql.Rows, error)
 	QueryRow(string, ...interface{}) *sql.Row
 }
 
-// Txer represents database transaction
-type Txer interface {
-	Queryer
-	driver.Tx
+// Tx represents database transaction interface
+type Tx interface {
+	Query
+	Commit() error
+	Rollback() error
 }
 
-// DBer database/sql
-type DBer interface {
-	Queryer
+// DB database/sql interface
+type DB interface {
+	Query
 	Begin() (*sql.Tx, error)
 	Close() error
 	Ping() error

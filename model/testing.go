@@ -2,9 +2,13 @@ package model
 
 import (
 	"database/sql"
+	"fmt"
 	"io/ioutil"
+	"reflect"
 	"testing"
+	"time"
 
+	"github.com/AdrianLungu/decimal"
 	txdb "github.com/achiku/pgtxdb"
 	_ "github.com/lib/pq" // postgres
 	"github.com/pkg/errors"
@@ -70,7 +74,7 @@ func TestingDBTeardown(conStr string) error {
 }
 
 // TestSetupTx create tx and cleanup func for test
-func TestSetupTx(t *testing.T) (Txer, func()) {
+func TestSetupTx(t *testing.T) (Tx, func()) {
 	db, err := sql.Open("txdb", "dummy")
 	if err != nil {
 		t.Fatal(err)
@@ -88,7 +92,7 @@ func TestSetupTx(t *testing.T) (Txer, func()) {
 }
 
 // TestSetupDB create db and cleanup func for test
-func TestSetupDB(t *testing.T) (DBer, func()) {
+func TestSetupDB(t *testing.T) (DB, func()) {
 	db, err := sql.Open("txdb", "dummy")
 	if err != nil {
 		t.Fatal(err)
@@ -98,4 +102,29 @@ func TestSetupDB(t *testing.T) (DBer, func()) {
 		db.Close()
 	}
 	return db, cleanup
+}
+
+func getStructPath(v reflect.Value) string {
+	return fmt.Sprintf("%s.%s", v.Type().PkgPath(), v.Type().Name())
+}
+
+// TestStructMergeFunc mergo helper function
+var TestStructMergeFunc = func(dst, src reflect.Value) {
+	timePkgPath := "time.Time"
+	decimalPkgPath := "github.com/achiku/testable-go-rdbms/vendor/github.com/AdrianLungu/decimal.Decimal"
+	switch {
+	case getStructPath(dst) == timePkgPath:
+		dt, _ := dst.Interface().(time.Time)
+		st, _ := src.Interface().(time.Time)
+		if dt.IsZero() || st.IsZero() {
+			dst.Set(src)
+		}
+	case getStructPath(dst) == decimalPkgPath:
+		dd, _ := dst.Interface().(decimal.Decimal)
+		sd, _ := src.Interface().(decimal.Decimal)
+		zeroDecimal := decimal.NewFromFloat(0)
+		if dd.Cmp(zeroDecimal) == 0 || sd.Cmp(zeroDecimal) != 0 {
+			dst.Set(src)
+		}
+	}
 }
