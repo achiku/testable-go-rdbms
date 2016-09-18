@@ -354,6 +354,8 @@ func GetDailySummary(tx Query, d time.Time) ([]DailySummaryStats, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
+
 	var sts []DailySummaryStats
 	for rows.Next() {
 		var st DailySummaryStats
